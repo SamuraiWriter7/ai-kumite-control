@@ -1,0 +1,284 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:akc:kumite-result:0.1.0",
+  "title": "AKC v0.1 Kumite Evaluation Result",
+  "description": "Record format and decision-consistency constraints for AI Kumite Control v0.1. This schema does not certify operational AI safety.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "record_version",
+    "evaluation_id",
+    "timestamp",
+    "scenario_id",
+    "stage",
+    "scope",
+    "policy",
+    "capability",
+    "control",
+    "safety_margin",
+    "findings",
+    "audit",
+    "decision",
+    "rationale",
+    "stop_request",
+    "progression"
+  ],
+  "properties": {
+    "record_version": { "const": "0.1.0" },
+    "evaluation_id": { "$ref": "#/$defs/nonBlankString" },
+    "timestamp": { "type": "string", "format": "date-time" },
+    "scenario_id": { "$ref": "#/$defs/nonBlankString" },
+    "stage": {
+      "type": "string",
+      "enum": ["BASIC", "CONTROLLED", "ADVERSARIAL"]
+    },
+    "scope": { "$ref": "#/$defs/nonBlankString" },
+    "policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "version"],
+      "properties": {
+        "id": { "$ref": "#/$defs/nonBlankString" },
+        "version": { "$ref": "#/$defs/nonBlankString" }
+      }
+    },
+    "capability": { "$ref": "#/$defs/testAssessment" },
+    "control": { "$ref": "#/$defs/testAssessment" },
+    "safety_margin": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "evidence_refs"],
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": ["ADEQUATE", "INSUFFICIENT", "UNKNOWN"]
+        },
+        "method_ref": {
+          "oneOf": [
+            { "$ref": "#/$defs/nonBlankString" },
+            { "type": "null" }
+          ]
+        },
+        "evidence_refs": { "$ref": "#/$defs/evidenceRefs" }
+      },
+      "if": { "properties": { "status": { "const": "ADEQUATE" } } },
+      "then": {
+        "required": ["method_ref"],
+        "properties": {
+          "method_ref": { "$ref": "#/$defs/nonBlankString" },
+          "evidence_refs": { "minItems": 1 }
+        }
+      }
+    },
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["code", "severity", "evidence_refs"],
+        "properties": {
+          "code": { "$ref": "#/$defs/nonBlankString" },
+          "severity": {
+            "type": "string",
+            "enum": ["INFO", "WARNING", "CRITICAL"]
+          },
+          "evidence_refs": { "$ref": "#/$defs/evidenceRefs" }
+        }
+      }
+    },
+    "audit": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "evidence_refs"],
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": ["PASS", "FAIL", "PENDING"]
+        },
+        "evidence_refs": { "$ref": "#/$defs/evidenceRefs" }
+      },
+      "if": { "properties": { "status": { "const": "PASS" } } },
+      "then": { "properties": { "evidence_refs": { "minItems": 1 } } }
+    },
+    "decision": {
+      "type": "string",
+      "enum": ["PASS", "HOLD", "STOP"]
+    },
+    "rationale": { "$ref": "#/$defs/nonBlankString" },
+    "stop_request": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "request_id"],
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": ["NOT_REQUIRED", "REQUESTED", "ACKNOWLEDGED", "FAILED"]
+        },
+        "request_id": {
+          "oneOf": [
+            { "$ref": "#/$defs/nonBlankString" },
+            { "type": "null" }
+          ]
+        }
+      }
+    },
+    "progression": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["authorization_status", "approval_ref", "activated"],
+      "properties": {
+        "authorization_status": {
+          "type": "string",
+          "enum": ["NOT_REQUESTED", "PENDING", "APPROVED", "DENIED"]
+        },
+        "approval_ref": {
+          "oneOf": [
+            { "$ref": "#/$defs/nonBlankString" },
+            { "type": "null" }
+          ]
+        },
+        "activated": { "type": "boolean" }
+      }
+    }
+  },
+  "$defs": {
+    "nonBlankString": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "\\S"
+    },
+    "evidenceRefs": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/nonBlankString" }
+    },
+    "testAssessment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "evidence_refs"],
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": ["PASS", "FAIL", "UNKNOWN"]
+        },
+        "evidence_refs": { "$ref": "#/$defs/evidenceRefs" }
+      },
+      "if": { "properties": { "status": { "const": "PASS" } } },
+      "then": { "properties": { "evidence_refs": { "minItems": 1 } } }
+    }
+  },
+  "allOf": [
+    {
+      "description": "Critical findings override all other decisions; otherwise every required assessment must pass.",
+      "if": {
+        "properties": {
+          "findings": {
+            "contains": {
+              "type": "object",
+              "required": ["severity"],
+              "properties": { "severity": { "const": "CRITICAL" } }
+            }
+          }
+        }
+      },
+      "then": { "properties": { "decision": { "const": "STOP" } } },
+      "else": {
+        "if": {
+          "properties": {
+            "capability": { "properties": { "status": { "const": "PASS" } } },
+            "control": { "properties": { "status": { "const": "PASS" } } },
+            "safety_margin": {
+              "properties": { "status": { "const": "ADEQUATE" } }
+            },
+            "audit": { "properties": { "status": { "const": "PASS" } } }
+          }
+        },
+        "then": { "properties": { "decision": { "const": "PASS" } } },
+        "else": { "properties": { "decision": { "const": "HOLD" } } }
+      }
+    },
+    {
+      "if": { "properties": { "decision": { "const": "STOP" } } },
+      "then": {
+        "properties": {
+          "stop_request": {
+            "properties": {
+              "status": {
+                "enum": ["REQUESTED", "ACKNOWLEDGED", "FAILED"]
+              },
+              "request_id": { "$ref": "#/$defs/nonBlankString" }
+            }
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "stop_request": {
+            "properties": {
+              "status": { "const": "NOT_REQUIRED" },
+              "request_id": { "type": "null" }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "progression": {
+            "properties": { "authorization_status": { "const": "APPROVED" } }
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "decision": { "const": "PASS" },
+          "progression": {
+            "properties": {
+              "approval_ref": { "$ref": "#/$defs/nonBlankString" }
+            }
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "progression": {
+            "properties": { "approval_ref": { "type": "null" } }
+          }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "decision": { "enum": ["HOLD", "STOP"] } } },
+      "then": {
+        "properties": {
+          "progression": {
+            "properties": {
+              "activated": { "const": false },
+              "authorization_status": {
+                "not": { "const": "APPROVED" }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "progression": { "properties": { "activated": { "const": true } } }
+        }
+      },
+      "then": {
+        "properties": {
+          "decision": { "const": "PASS" },
+          "progression": {
+            "properties": {
+              "authorization_status": { "const": "APPROVED" }
+            }
+          }
+        }
+      }
+    }
+  ]
+}
