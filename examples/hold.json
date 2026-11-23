@@ -1,0 +1,53 @@
+{
+  "record_version": "0.1.0",
+  "evaluation_id": "akc-hold-001",
+  "timestamp": "2026-11-23T00:00:00Z",
+  "scenario_id": "controlled-safety-margin-001",
+  "stage": "CONTROLLED",
+  "scope": "Isolated capability-development evaluation with unresolved safety margin",
+  "policy": {
+    "id": "policy-basic-001",
+    "version": "1.0"
+  },
+  "capability": {
+    "status": "PASS",
+    "evidence_refs": [
+      "evidence/capability-002"
+    ]
+  },
+  "control": {
+    "status": "PASS",
+    "evidence_refs": [
+      "evidence/control-002"
+    ]
+  },
+  "safety_margin": {
+    "status": "UNKNOWN",
+    "method_ref": null,
+    "evidence_refs": []
+  },
+  "findings": [
+    {
+      "code": "SAFETY_MARGIN_UNVERIFIED",
+      "severity": "WARNING",
+      "evidence_refs": [
+        "evidence/margin-review-002"
+      ]
+    }
+  ],
+  "audit": {
+    "status": "PENDING",
+    "evidence_refs": []
+  },
+  "decision": "HOLD",
+  "rationale": "Capability and control tests passed, but the safety margin remains unverified and the independent audit is pending. Progression is prohibited until the missing evidence and audit requirements are resolved.",
+  "stop_request": {
+    "status": "NOT_REQUIRED",
+    "request_id": null
+  },
+  "progression": {
+    "authorization_status": "NOT_REQUESTED",
+    "approval_ref": null,
+    "activated": false
+  }
+}
